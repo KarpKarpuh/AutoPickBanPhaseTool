@@ -2,37 +2,42 @@ package LCUAPI;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.net.http.HttpResponse;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Base64;
 
+import org.apache.http.ParseException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
-
+import org.apache.http.util.EntityUtils;
+import org.json.JSONObject;
 
 
 public class LeagueClient {
 
-    String leagueExePath;
+    private static final String QUEUE_STATUS_ENDPOINT = "/lol-lobby-team-builder/v1/matchmaking";
+    private static final String PICK_AND_BAN_STATUS_ENDPOINT = "/lol-lobby-team-builder/champ-select/v1/session";
+    private static final String ACCEPT_QUEUE_ENDPOINT = "lol-lobby-team-builder/v1/ready-check/accept";
 
-    String token;
-    String apiURI;
-    int port;
-    int LeaguePID;
+    private String leagueExePath;
 
-    CloseableHttpClient client;
-    byte[] encodedAuth;
-    HttpPost httpPost;
-    HttpGet httpGet;
-    HttpPut httpPut;
-    HttpDelete httpDelete;
+    private String token;
+    private String apiURI;
+    private int port;
+    private int LeaguePID;
+
+    private CloseableHttpClient client;
+    private byte[] encodedAuth;
+    private HttpPost httpPost;
+    private HttpGet httpGet;
+    private HttpPut httpPut;
+    private HttpDelete httpDelete;
 
     public LeagueClient(String leagueExePath){
         this.client = HttpClientBuilder.create().build();
@@ -40,7 +45,7 @@ public class LeagueClient {
     }
 
     public void connect(){
-        GetLockFileCredentials(leagueExePath);
+        getLockFileCredentials(leagueExePath);
     }
 
     public void disconnect()
@@ -54,23 +59,23 @@ public class LeagueClient {
         System.out.println("Disconnected from LCU");
     }
 
-    public CloseableHttpResponse request(RequestMethodType methodType, String endpoint, Object Data){
+    private CloseableHttpResponse request(RequestMethodType methodType, String endpoint, Object Data){
         switch(methodType)
         {
             case GET:
-                return ExecuteGetRequest(endpoint, Data);
+                return executeGetRequest(endpoint, Data);
             case PUT:
-                return ExecutePutRequest(endpoint,Data);
+                return executePutRequest(endpoint,Data);
             case POST:
-                return ExecutePostRequest(endpoint,Data);
+                return executePostRequest(endpoint,Data);
             case DELETE:
-                return ExecuteDeleteRequest(endpoint,Data);
+                return executeDeleteRequest(endpoint,Data);
             default:
                 throw new RequestTypeNotFoundException(methodType);
         }
     }
 
-    private void GetLockFileCredentials(String PathToLockFile)
+    private void getLockFileCredentials(String PathToLockFile)
     {
         BufferedReader reader;
         try
@@ -94,7 +99,7 @@ public class LeagueClient {
         }
     }
 
-    private CloseableHttpResponse ExecuteGetRequest(String endPoint, Object data)
+    private CloseableHttpResponse executeGetRequest(String endPoint, Object data)
     {
         try
         {
@@ -114,7 +119,7 @@ public class LeagueClient {
         return null;
     }
 
-    private CloseableHttpResponse ExecutePostRequest(String endPoint, Object data)
+    private CloseableHttpResponse executePostRequest(String endPoint, Object data)
     {
         try
         {
@@ -139,7 +144,7 @@ public class LeagueClient {
         return null;
     }
 
-    private CloseableHttpResponse ExecutePutRequest(String endPoint, Object data)
+    private CloseableHttpResponse executePutRequest(String endPoint, Object data)
     {
         try
         {
@@ -164,7 +169,7 @@ public class LeagueClient {
         return null;
     }
 
-    private CloseableHttpResponse ExecuteDeleteRequest(String endPoint, Object data)
+    private CloseableHttpResponse executeDeleteRequest(String endPoint, Object data)
     {
         try
         {
@@ -184,4 +189,30 @@ public class LeagueClient {
         }
         return null;
     }
+
+    private String getResponseEntityString(String endpoint) throws ParseException, IOException{
+        JSONObject data = new JSONObject();
+        CloseableHttpResponse response = request(RequestMethodType.GET, endpoint, data.toString());
+        return EntityUtils.toString(response.getEntity(), "UTF-8");
+        
+    }
+
+    public String getQueueStatus() throws ParseException, IOException{
+        String erg = getResponseEntityString(QUEUE_STATUS_ENDPOINT);
+        int startIndex = erg.indexOf("searchState\":\"")+14;
+        int stopIndex = erg.indexOf("timeInQueue")-3;
+        return erg.substring(startIndex, stopIndex);
+    }
+
+    public String getPickBanPhaseStatus() throws ParseException, IOException{
+        String erg = getResponseEntityString(PICK_AND_BAN_STATUS_ENDPOINT);
+        return erg;
+    }
+
+    public void acceptQueue(){
+        JSONObject data = new JSONObject();
+        request(RequestMethodType.POST, ACCEPT_QUEUE_ENDPOINT, data);
+    }
+    
+
 }

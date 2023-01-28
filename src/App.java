@@ -1,18 +1,40 @@
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.util.EntityUtils;
-import org.json.JSONObject;
-
 import LCUAPI.LeagueClient;
-import LCUAPI.RequestMethodType;
 
 public class App {
+
+    private final static String QUEUE_FOUND = "Found";
+    private final static int QUEUE_CHECK_INTERVALL = 9999;
+    private final static int PICK_AND_BAN_CHECK_INTERVALL = 5000;
+
     public static void main(String[] args) throws Exception {
         LeagueClient leagueClient = new LeagueClient("C:\\Riot Games\\League of Legends\\lockfile");
         leagueClient.connect();
-        JSONObject data = new JSONObject();
+       
+        //Queue Event
+      while(!leagueClient.getQueueStatus().equals(QUEUE_FOUND)){
+            Thread.sleep(QUEUE_CHECK_INTERVALL);
+        }
+        System.out.println("Queue Found!");
 
-        CloseableHttpResponse response = leagueClient.request(RequestMethodType.GET, "/lol-lobby-team-builder/v1/matchmaking", data.toString());
-        System.out.println(EntityUtils.toString(response.getEntity(), "UTF-8"));
+
+        //Queue Accept
+        leagueClient.acceptQueue();
+
+        
+        
+        for (int i = 0; i < 60; i++) {
+            System.out.println(leagueClient.getPickBanPhaseStatus());
+            Thread.sleep(PICK_AND_BAN_CHECK_INTERVALL);
+        }
+
+        System.out.println("Queue Accepted");
+        
         leagueClient.disconnect();
+
+        
     }
+
+
+
 }
+
